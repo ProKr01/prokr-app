@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arise</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen p-4">
   <div class="max-w-md mx-auto">
@@ -12,8 +15,8 @@
     <header class="flex justify-between items-center mb-8">
       <h1 class="text-4xl font-black">ARISE ⚔️</h1>
       <div class="text-right">
-        <div class="text-emerald-400 text-2xl" id="level">Lv. 1</div>
-        <div id="xp">245 XP</div>
+        <div class="text-emerald-400 text-2xl" id="level">Lv. --</div>
+        <div id="xp">-- XP</div>
       </div>
     </header>
 
@@ -32,24 +35,80 @@
   </div>
 
   <script>
-    let xp = 245, level = 1;
+    // Live Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWSur-nZd-X4qZrk2ijd8sne7c5EFuOyM",
+      authDomain: "prokr-896fc.firebaseapp.com",
+      databaseURL: "https://prokr-896fc-default-rtdb.firebaseio.com",
+      projectId: "prokr-896fc",
+      storageBucket: "prokr-896fc.firebasestorage.app",
+      messagingSenderId: "305648872940",
+      appId: "1:305648872940:web:c7b0f212d9b7b0f167a4c9"
+    };
 
-    function update() {
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // Application state variables
+    let xp = 0, level = 1;
+    const userDbRef = database.ref("users/ProKr");
+
+    // 1. Listen for Realtime database updates
+    function initDatabaseListener() {
+      userDbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          xp = data.xp !== undefined ? data.xp : 0;
+          level = data.level !== undefined ? data.level : 1;
+          updateUI();
+        } else {
+          // Fallback if the user profile doesn't exist yet in your DB root
+          xp = 245;
+          level = 1;
+          updateUI();
+          saveUserData(xp, level);
+        }
+      }, (error) => {
+        console.error("Database read failed: ", error);
+        // Clean local defaults fallback if rule permissions block it initially
+        xp = 245;
+        level = 1;
+        updateUI();
+      });
+    }
+
+    // 2. Save tracking state back to Firebase
+    function saveUserData(currentXp, currentLevel) {
+      userDbRef.set({
+        xp: currentXp,
+        level: currentLevel
+      }).catch((error) => console.error("Database save failed: ", error));
+    }
+
+    function updateUI() {
       document.getElementById('xp').textContent = xp + " XP";
       document.getElementById('level').textContent = "Lv. " + level;
     }
 
+    function addXp(amount) {
+      xp += amount;
+      if (xp >= level * 120) { 
+        level++; 
+        xp = 0; 
+        alert("🎉 LEVEL UP!"); 
+      }
+      updateUI();
+      saveUserData(xp, level);
+    }
+
     function completeQuest() {
-      xp += 50;
-      if (xp >= level * 120) { level++; xp = 0; alert("🎉 LEVEL UP!"); }
-      update();
+      addXp(50);
       alert("Quest Complete!");
     }
 
     function logWorkout() {
-      xp += 35;
-      if (xp >= level * 120) { level++; xp = 0; alert("🎉 LEVEL UP!"); }
-      update();
+      addXp(35);
       alert("Workout Logged!");
     }
 
@@ -61,25 +120,8 @@
       alert("🧠 Personalized Plan Ready!\n\nPush Day Focus");
     }
 
-    update();
+    // Spin up the sync link
+    initDatabaseListener();
   </script>
 </body>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyAWSur-nZd-X4qZrk2ijd8sne7c5EFuOyM",
-    authDomain: "prokr-896fc.firebaseapp.com",
-    projectId: "prokr-896fc",
-    storageBucket: "prokr-896fc.firebasestorage.app",
-    messagingSenderId: "305648872940",
-    appId: "1:305648872940:web:c7b0f212d9b7b0f167a4c9"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-</script>
+</html>
