@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProFit++ Ultra Engine</title>
+  <title>ProFit++ Overdrive Engine</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -15,21 +15,34 @@
       0%, 100% { filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.4)); }
       50% { filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.8)); }
     }
+    @keyframes goldGlow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(234, 179, 8, 0.5)); border-color: rgba(234, 179, 8, 0.6); }
+      50% { filter: drop-shadow(0 0 16px rgba(234, 179, 8, 0.9)); border-color: rgba(250, 204, 21, 1); }
+    }
     @keyframes lvlFlash {
       0% { background-color: rgba(16, 185, 129, 0); }
       50% { background-color: rgba(16, 185, 129, 0.35); }
       100% { background-color: rgba(16, 185, 129, 0); }
     }
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-4px, 2px); }
+      20%, 40%, 60%, 80% { transform: translate(4px, -2px); }
+    }
     .pulse-neon { animation: neonGlow 2s infinite ease-in-out; }
+    .pulse-gold { animation: goldGlow 1.5s infinite ease-in-out; }
     .level-up-flash { animation: lvlFlash 0.5s cubic-bezier(0.1, 0.8, 0.3, 1); }
+    .shake-ui { animation: shake 0.4s ease-in-out; }
     
-    /* Smooth scaling overrides */
     .scale-up-trigger {
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+    .xp-bar-fill {
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen lg:pb-0 pb-24 transition-colors duration-300">
+<body id="engine-body" class="bg-zinc-950 text-white min-h-screen lg:pb-0 pb-24 transition-colors duration-500">
 
   <div class="max-w-7xl mx-auto min-h-screen lg:grid lg:grid-cols-12 lg:gap-8 lg:p-6">
     
@@ -38,23 +51,35 @@
         <h1 class="text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">ProFit++ ⚔️</h1>
         <div class="text-right lg:hidden">
           <div class="text-emerald-400 text-2xl font-bold transition-all" id="level-mob">Lv. 0</div>
-          <div id="xp-mob" class="text-zinc-400 text-sm font-medium font-mono">0 / 120 XP</div>
         </div>
       </header>
 
-      <div class="bg-zinc-900 rounded-3xl p-6 border border-zinc-800 relative shadow-xl space-y-4">
+      <div id="profile-card" class="bg-zinc-900 rounded-3xl p-6 border border-zinc-800 relative shadow-xl space-y-4 transition-all duration-500">
+        <div id="all-clear-banner" class="hidden text-center bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 text-[10px] font-black tracking-widest py-1 rounded-md shadow-lg animate-pulse">
+          ⚡ DAILY OVERDRIVE UNLOCKED ⚡
+        </div>
+
         <div class="hidden lg:flex justify-between items-start">
-          <span class="text-xs bg-zinc-950 px-3 py-1 rounded-full text-zinc-400 border border-zinc-800 font-mono">STATUS PANEL</span>
+          <span id="panel-tag" class="text-xs bg-zinc-950 px-3 py-1 rounded-full text-zinc-400 border border-zinc-800 font-mono">STATUS PANEL</span>
           <div class="text-right">
             <div class="text-emerald-400 text-3xl font-black scale-up-trigger" id="level-desk">Lv. 0</div>
-            <div id="xp-desk" class="text-zinc-500 text-xs font-mono mt-1">0 / 120 XP</div>
           </div>
         </div>
 
-        <div class="relative w-full aspect-square bg-zinc-950 rounded-2xl border border-zinc-800 overflow-hidden group">
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] font-mono text-zinc-400 font-bold">
+            <span>PROG_XP</span>
+            <span id="xp-text-counter">0 / 120 XP</span>
+          </div>
+          <div class="w-full h-2 bg-zinc-950 rounded-full overflow-hidden p-0.5 border border-zinc-800">
+            <div id="xp-progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full xp-bar-fill shadow-[0_0_8px_rgba(34,211,238,0.5)]" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div id="avatar-window" class="relative w-full aspect-square bg-zinc-950 rounded-2xl border-4 border-zinc-800 overflow-hidden group transition-all duration-500 shadow-md">
           <img id="avatar-frame" src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
-          <div class="absolute bottom-2 right-2 bg-zinc-900/90 border border-zinc-800 px-2 py-1 rounded-lg text-[10px] text-zinc-400 font-mono tracking-wider">
-            SYSTEM FEED
+          <div id="avatar-tier-badge" class="absolute bottom-2 right-2 bg-zinc-900/90 border border-zinc-800 px-2 py-1 rounded-lg text-[10px] text-zinc-400 font-mono tracking-wider font-bold">
+            BRONZE TIER
           </div>
         </div>
 
@@ -91,7 +116,8 @@
       
       <div id="page-dashboard" class="tab-page space-y-6">
         <div class="grid grid-cols-2 gap-4">
-          <div class="bg-zinc-900 rounded-3xl p-5 border border-zinc-800 flex flex-col justify-between space-y-4 shadow-md">
+          <div class="bg-zinc-900 rounded-3xl p-5 border border-zinc-800 flex flex-col justify-between space-y-4 shadow-md relative">
+            <div id="cal-complete-check" class="absolute top-3 right-3 text-emerald-400 hidden font-bold text-sm bg-emerald-950/80 border border-emerald-800 px-2 py-0.5 rounded-lg font-mono">✓ MET</div>
             <div>
               <p class="text-zinc-400 text-xs font-bold uppercase tracking-wider">🔥 Energy Logged</p>
               <p class="text-2xl font-black mt-2 text-orange-400 font-mono"><span id="calories">0</span> <span class="text-xs text-zinc-500 font-normal font-sans">/ <span id="target-calories">2000</span> kcal</span></p>
@@ -108,7 +134,8 @@
             </div>
           </div>
 
-          <div class="bg-zinc-900 rounded-3xl p-5 border border-zinc-800 flex flex-col justify-between space-y-4 shadow-md">
+          <div class="bg-zinc-900 rounded-3xl p-5 border border-zinc-800 flex flex-col justify-between space-y-4 shadow-md relative">
+            <div id="water-complete-check" class="absolute top-3 right-3 text-emerald-400 hidden font-bold text-sm bg-emerald-950/80 border border-emerald-800 px-2 py-0.5 rounded-lg font-mono">✓ HYDRATED</div>
             <div>
               <p class="text-zinc-400 text-xs font-bold uppercase tracking-wider">💧 Elixir Infused</p>
               <p class="text-2xl font-black mt-2 text-cyan-400 font-mono"><span id="water">0</span> <span class="text-xs text-zinc-500 font-normal font-sans">/ <span id="target-water">3000</span> ml</span></p>
@@ -128,26 +155,26 @@
         <div class="space-y-4">
           <h3 class="text-xs font-bold text-zinc-500 tracking-wider uppercase pl-1">Active Instanced Quests</h3>
           
-          <button onclick="completeQuest()" class="w-full bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 p-5 rounded-3xl text-left text-lg flex justify-between items-center transition group relative overflow-hidden">
+          <button id="quest-gate-btn" onclick="completeQuest()" class="w-full bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 p-5 rounded-3xl text-left text-lg flex justify-between items-center transition group relative overflow-hidden">
             <div class="flex items-center gap-3">
-              <span class="text-2xl group-hover:scale-110 transition duration-300">🏆</span>
+              <span id="quest-gate-icon" class="text-2xl group-hover:scale-110 transition duration-300">🏆</span>
               <div>
-                <p class="font-bold text-base text-zinc-100">Daily Gate Quest</p>
+                <p id="quest-gate-title" class="font-bold text-base text-zinc-100">Daily Gate Quest</p>
                 <p class="text-xs text-zinc-500">Complete standard physical tracking parameters</p>
               </div>
             </div>
-            <span class="text-emerald-400 font-black text-sm bg-emerald-950/50 border border-emerald-900 px-3 py-1 rounded-xl tracking-wide">+50 XP</span>
+            <span id="quest-gate-reward" class="text-emerald-400 font-black text-sm bg-emerald-950/50 border border-emerald-900 px-3 py-1 rounded-xl tracking-wide">+50 XP</span>
           </button>
           
-          <button onclick="logWorkout()" class="w-full bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 p-5 rounded-3xl text-left text-lg flex justify-between items-center transition group relative overflow-hidden">
+          <button id="quest-dungeon-btn" onclick="logWorkout()" class="w-full bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 p-5 rounded-3xl text-left text-lg flex justify-between items-center transition group relative overflow-hidden">
             <div class="flex items-center gap-3">
-              <span class="text-2xl group-hover:scale-110 transition duration-300">🏋️</span>
+              <span id="quest-dungeon-icon" class="text-2xl group-hover:scale-110 transition duration-300">🏋️</span>
               <div>
-                <p class="font-bold text-base text-zinc-100">Clear Instance Dungeon</p>
+                <p id="quest-dungeon-title" class="font-bold text-base text-zinc-100">Clear Instance Dungeon</p>
                 <p class="text-xs text-zinc-500">Commit structural muscle stress loading routine</p>
               </div>
             </div>
-            <span class="text-emerald-400 font-black text-sm bg-emerald-950/50 border border-emerald-900 px-3 py-1 rounded-xl tracking-wide">+35 XP</span>
+            <span id="quest-dungeon-reward" class="text-emerald-400 font-black text-sm bg-emerald-950/50 border border-emerald-900 px-3 py-1 rounded-xl tracking-wide">+35 XP</span>
           </button>
         </div>
       </div>
@@ -291,11 +318,17 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     
-    // Core memory tracking states variables (Initializing Explicit Default Streak baseline to zero)
+    // Core memory tracking states variables
     let xp = 0, level = 0, calories = 0, water = 0, hunterName = "ProKr", streak = 0;
     let weight = 70, targetWeight = 65, height = 175, lifestyle = "moderate", targetLifestyle = "elite";
     let timeframe = "6_months", region = "western", avatarSkin = "real";
     let lastStreakDate = "";
+    
+    // Day Locks completion variables
+    let dailyQuestCompleted = false;
+    let dungeonCompleted = false;
+    let targetCaloriesValue = 2000;
+    let targetWaterValue = 3000;
     
     const userDbRef = database.ref("users/ProKr");
 
@@ -323,7 +356,7 @@
       },
       playFanfare() {
         this.init();
-        const chordNotes = [261.63, 329.63, 392.00, 523.25]; // Synthesized Major Tonal Ascent Arpeggio Ring
+        const chordNotes = [261.63, 329.63, 392.00, 523.25];
         chordNotes.forEach((f, index) => {
           const osc = this.ctx.createOscillator();
           const gainNode = this.ctx.createGain();
@@ -335,6 +368,22 @@
           gainNode.connect(this.ctx.destination);
           osc.start(this.ctx.currentTime + index * 0.09);
           osc.stop(this.ctx.currentTime + index * 0.09 + 0.28);
+        });
+      },
+      playAllClear() {
+        this.init();
+        const tones = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        tones.forEach((f, index) => {
+          const osc = this.ctx.createOscillator();
+          const gainNode = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, this.ctx.currentTime + index * 0.06);
+          gainNode.gain.setValueAtTime(0.08, this.ctx.currentTime + index * 0.06);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + index * 0.06 + 0.4);
+          osc.connect(gainNode);
+          gainNode.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + index * 0.06);
+          osc.stop(this.ctx.currentTime + index * 0.06 + 0.4);
         });
       }
     };
@@ -361,6 +410,7 @@
           window.requestAnimationFrame(executionStep);
         } else {
           node.textContent = pointOmega;
+          verifyDailyObjectiveMetals();
         }
       };
       window.requestAnimationFrame(executionStep);
@@ -407,6 +457,9 @@
           avatarSkin = data.avatarSkin || "real";
           lastStreakDate = data.lastStreakDate || "";
           
+          dailyQuestCompleted = data.dailyQuestCompleted || false;
+          dungeonCompleted = data.dungeonCompleted || false;
+          
           updateUIValues();
           calculateClass(false);
         } else {
@@ -419,19 +472,21 @@
       userDbRef.set({
         xp: Math.round(xp), level: Math.round(level), calories: Math.round(calories), water: Math.round(water),
         hunterName: hunterName, streak: Math.round(streak), weight: Number(weight), targetWeight: Number(targetWeight), height: Number(height),
-        lifestyle: lifestyle, targetLifestyle: targetLifestyle, timeframe: timeframe, region: region, avatarSkin: avatarSkin, lastStreakDate: lastStreakDate
+        lifestyle: lifestyle, targetLifestyle: targetLifestyle, timeframe: timeframe, region: region, avatarSkin: avatarSkin, lastStreakDate: lastStreakDate,
+        dailyQuestCompleted: dailyQuestCompleted, dungeonCompleted: dungeonCompleted
       });
     }
 
     function updateUIValues() {
       const boundaryTargetXP = (level + 1) * 120;
-      const formattedXpText = `${xp} / ${boundaryTargetXP} XP`;
-      const formattedLvlText = "Lv. " + level;
       
-      document.getElementById('xp-mob').textContent = formattedXpText;
-      document.getElementById('level-mob').textContent = formattedLvlText;
-      document.getElementById('xp-desk').textContent = formattedXpText;
-      document.getElementById('level-desk').textContent = formattedLvlText;
+      // Update custom visual RPG XP bar configurations
+      document.getElementById('xp-text-counter').textContent = `${xp} / ${boundaryTargetXP} XP`;
+      const computedPercentage = Math.min((xp / boundaryTargetXP) * 100, 100);
+      document.getElementById('xp-progress-bar').style.width = `${computedPercentage}%`;
+      
+      document.getElementById('level-mob').textContent = "Lv. " + level;
+      document.getElementById('level-desk').textContent = "Lv. " + level;
       
       document.getElementById('calories').textContent = calories;
       document.getElementById('water').textContent = water;
@@ -448,13 +503,31 @@
       
       document.getElementById('avatar-selector').value = avatarSkin;
       
+      // Tiered Frame Architecture Upgrades
       const targetImgFrame = document.getElementById('avatar-frame');
+      const avatarWindow = document.getElementById('avatar-window');
+      const tierBadge = document.getElementById('avatar-tier-badge');
+      
       targetImgFrame.src = AVATAR_SKIN_VAULT[avatarSkin] || AVATAR_SKIN_VAULT['real'];
-      if(avatarSkin !== 'real') {
-        targetImgFrame.classList.add('pulse-neon', 'border-2', 'border-cyan-400');
+      
+      // Level Driven Visual Tier Allocations
+      if (level >= 5) {
+        tierBadge.textContent = "MYTHIC GOLD TIER";
+        tierBadge.className = "absolute bottom-2 right-2 bg-yellow-950/90 border border-yellow-500 px-2 py-1 rounded-lg text-[10px] text-yellow-400 font-mono font-black";
+        avatarWindow.className = "relative w-full aspect-square bg-zinc-950 rounded-2xl border-4 pulse-gold overflow-hidden group transition-all duration-500 shadow-xl";
+      } else if (level >= 3) {
+        tierBadge.textContent = "CYBER CYAN TIER";
+        tierBadge.className = "absolute bottom-2 right-2 bg-cyan-950/90 border border-cyan-500 px-2 py-1 rounded-lg text-[10px] text-cyan-400 font-mono font-bold";
+        avatarWindow.className = "relative w-full aspect-square bg-zinc-950 rounded-2xl border-4 border-cyan-500 pulse-neon overflow-hidden group transition-all duration-500 shadow-md";
       } else {
-        targetImgFrame.classList.remove('pulse-neon', 'border-2', 'border-cyan-400');
+        tierBadge.textContent = "BRONZE TIER";
+        tierBadge.className = "absolute bottom-2 right-2 bg-zinc-900/90 border border-zinc-800 px-2 py-1 rounded-lg text-[10px] text-zinc-400 font-mono";
+        avatarWindow.className = "relative w-full aspect-square bg-zinc-950 rounded-2xl border-4 border-zinc-800 overflow-hidden group transition-all duration-500 shadow-sm";
       }
+
+      // Check off Quest states templates
+      handleQuestUIReset('quest-gate', dailyQuestCompleted, "+50 XP", "🏆");
+      handleQuestUIReset('quest-dungeon', dungeonCompleted, "+35 XP", "🏋️");
 
       const verifiedTodayString = new Date().toDateString();
       const streakActionBtn = document.getElementById('streak-btn');
@@ -465,13 +538,68 @@
         streakActionBtn.textContent = "Claim"; streakActionBtn.disabled = false;
         streakActionBtn.className = "text-[10px] ml-1 bg-orange-500/20 px-2 py-0.5 rounded-md hover:bg-orange-500/40 text-orange-300 font-black transition";
       }
+      
+      verifyDailyObjectiveMetals();
+    }
+
+    function handleQuestUIReset(elementPrefix, stateFlag, xpLabel, coreIcon) {
+      const btn = document.getElementById(`${elementPrefix}-btn`);
+      const icon = document.getElementById(`${elementPrefix}-icon`);
+      const title = document.getElementById(`${elementPrefix}-title`);
+      const reward = document.getElementById(`${elementPrefix}-reward`);
+      
+      if (stateFlag) {
+        btn.disabled = true;
+        btn.classList.add('opacity-40', 'cursor-not-allowed', 'border-emerald-900/40');
+        icon.textContent = "✅";
+        title.classList.add('line-through', 'text-zinc-500');
+        reward.textContent = "LOCKED";
+        reward.className = "text-zinc-500 font-bold text-sm bg-zinc-950 border border-zinc-900 px-3 py-1 rounded-xl";
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('opacity-40', 'cursor-not-allowed', 'border-emerald-900/40');
+        icon.textContent = coreIcon;
+        title.classList.remove('line-through', 'text-zinc-500');
+        reward.textContent = xpLabel;
+        reward.className = "text-emerald-400 font-black text-sm bg-emerald-950/50 border border-emerald-900 px-3 py-1 rounded-xl tracking-wide";
+      }
+    }
+
+    function verifyDailyObjectiveMetals() {
+      const isCalDone = calories >= targetCaloriesValue;
+      const isWaterDone = water >= targetWaterValue;
+      
+      document.getElementById('cal-complete-check').style.display = isCalDone ? "block" : "none";
+      document.getElementById('water-complete-check').style.display = isWaterDone ? "block" : "none";
+      
+      const allDone = isCalDone && isWaterDone && dailyQuestCompleted && dungeonCompleted;
+      
+      const card = document.getElementById('profile-card');
+      const banner = document.getElementById('all-clear-banner');
+      const body = document.getElementById('engine-body');
+      
+      if (allDone) {
+        if (!card.classList.contains('border-yellow-500')) {
+          // Absolute Day Finish Ultimate Lock Trigger Sequence
+          SoundEngine.playAllClear();
+          runHapticPop('heavy');
+          body.classList.add('shake-ui');
+          setTimeout(() => body.classList.remove('shake-ui'), 500);
+        }
+        card.classList.remove('border-zinc-800');
+        card.classList.add('border-yellow-500', 'shadow-[0_0_20px_rgba(234,179,8,0.2)]');
+        banner.classList.remove('hidden');
+      } else {
+        card.classList.add('border-zinc-800');
+        card.classList.remove('border-yellow-500', 'shadow-[0_0_20px_rgba(234,179,8,0.2)]');
+        banner.classList.add('hidden');
+      }
     }
 
     function changeAvatarSkin(requestedSkinKey) {
       SoundEngine.playTick();
       runHapticPop('light');
       
-      // AAA Automated Condition Level Checks
       if (requestedSkinKey === 'shadow' && level < 3) {
         alert("🔒 Character Rank Restricted: Attain Level 3 to deploy Shadow Monarch visuals.");
         document.getElementById('avatar-selector').value = avatarSkin;
@@ -525,18 +653,18 @@
       badgeNode.textContent = "Class: " + finalClassRank;
       badgeNode.className = `text-xs font-semibold px-3 py-1.5 rounded-full border ${styleBadgeRules}`;
 
-      let baseCaloricCapacity = weight * 30;
-      if (targetLifestyle === "elite") baseCaloricCapacity += 600;
-      if (targetLifestyle === "sedentary") baseCaloricCapacity -= 400;
+      targetCaloriesValue = weight * 30;
+      if (targetLifestyle === "elite") targetCaloriesValue += 600;
+      if (targetLifestyle === "sedentary") targetCaloriesValue -= 400;
       
-      if (targetWeight < weight) baseCaloricCapacity -= 350;
-      else if (targetWeight > weight) baseCaloricCapacity += 350;
+      if (targetWeight < weight) targetCaloriesValue -= 350;
+      else if (targetWeight > weight) targetCaloriesValue += 350;
 
-      let baseWaterCapacity = 2200;
-      if (lifestyle === "elite" || targetLifestyle === "elite") baseWaterCapacity += 1300;
+      targetWaterValue = 2200;
+      if (lifestyle === "elite" || targetLifestyle === "elite") targetWaterValue += 1300;
 
-      document.getElementById('target-calories').textContent = Math.round(baseCaloricCapacity);
-      document.getElementById('target-water').textContent = Math.round(baseWaterCapacity);
+      document.getElementById('target-calories').textContent = Math.round(targetCaloriesValue);
+      document.getElementById('target-water').textContent = Math.round(targetWaterValue);
 
       const computedProteinMultiplier = targetLifestyle === "elite" ? 2.2 : (targetLifestyle === "moderate" ? 1.8 : 1.2);
       document.getElementById('macro-p').textContent = Math.round(weight * computedProteinMultiplier) + "g";
@@ -673,7 +801,6 @@
         xp -= adaptiveTargetXP;
         level++;
         
-        // AAA Structural UI Level Flash Response Trigger
         SoundEngine.playFanfare();
         runHapticPop('heavy');
         
@@ -688,8 +815,19 @@
       saveUserData();
     }
 
-    function completeQuest() { addXp(50); }
-    function logWorkout() { addXp(35); }
+    function completeQuest() { 
+      if (!dailyQuestCompleted) {
+        dailyQuestCompleted = true;
+        addXp(50); 
+      }
+    }
+    
+    function logWorkout() { 
+      if (!dungeonCompleted) {
+        dungeonCompleted = true;
+        addXp(35); 
+      }
+    }
 
     function updateHunterName(v) { if(v.trim() !== "") { hunterName = v; saveUserData(); } }
 
@@ -706,6 +844,7 @@
     function resetProgress() {
       if (confirm("🚨 Wipe character configuration matrix back to tracking defaults?")) {
         xp = 0; level = 0; calories = 0; water = 0; streak = 0; lastStreakDate = "";
+        dailyQuestCompleted = false; dungeonCompleted = false;
         weight = 70; targetWeight = 65; height = 175; lifestyle = "moderate"; targetLifestyle = "elite"; timeframe = "6_months"; region = "western"; avatarSkin = "real";
         saveUserData(); switchTab('dashboard');
       }
